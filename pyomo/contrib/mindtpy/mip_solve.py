@@ -23,6 +23,7 @@ def solve_OA_master(solve_data, config):
 
     MindtPy.MindtPy_linear_cuts.activate()
     main_objective = next(master_mip.component_data_objects(Objective, active=True))
+    # TODO-romeo we can deactivate and change the objective only in the non-linear case right?
     main_objective.deactivate()
 
     sign_adjust = 1 if main_objective.sense == minimize else -1

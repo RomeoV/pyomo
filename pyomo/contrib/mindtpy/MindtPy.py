@@ -21,6 +21,7 @@ rigorous. Questions: Please make a post at StackOverflow and/or David Bernal
 from __future__ import division
 
 import logging
+from math import inf
 
 from pyomo.common.config import (
     ConfigBlock, ConfigValue, In, PositiveFloat, PositiveInt
@@ -121,6 +122,22 @@ class MindtPySolver(object):
         doc="Feasibility tolerance used to determine the stopping criterion in"
             "the ECP method. As long as nonlinear constraint are violated for "
             "more than this tolerance, the method will keep iterating"
+    ))
+    CONFIG.declare("LOA_alpha", ConfigValue(
+        default=0.5,
+        domain=PositiveFloat,
+        description="'Step size' parameter",
+        doc="Linear tradeoff parameter for incumbent vs lower bound."
+            "Has to be between 0 and 1. 0 means 100% incumbent (i.e. no new point),"
+            "1 means 100% lower bound (i.e. regular OA)"
+    ))
+    CONFIG.declare("LOA_norm", ConfigValue(
+        default=2,
+        domain=In([1, 2, inf, '1', '2', 'inf']),
+        description="'Step size' parameter",
+        doc="Linear tradeoff parameter for incumbent vs lower bound."
+            "Has to be between 0 and 1. 0 means 100% incumbent (i.e. no new point),"
+            "1 means 100% lower bound (i.e. regular OA)"
     ))
     CONFIG.declare("nlp_solver", ConfigValue(
         default="ipopt",
@@ -252,6 +269,7 @@ class MindtPySolver(object):
 
         solve_data.original_model = model
         solve_data.working_model = model.clone()
+        solve_data.incumbent_model = solve_data.working_model.clone()
         if config.integer_to_binary:
             TransformationFactory('contrib.integer_to_binary'). \
                 apply_to(solve_data.working_model)
@@ -268,7 +286,7 @@ class MindtPySolver(object):
 
             MindtPy = solve_data.working_model.MindtPy_utils
             setup_results_object(solve_data, config)
-            process_objective(solve_data, config)
+            process_objective(solve_data, config, alway_move_objective=True)  # TODO-romeo fix this
 
             # Save model initial values.
             solve_data.initial_var_values = list(

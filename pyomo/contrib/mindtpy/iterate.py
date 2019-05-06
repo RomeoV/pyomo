@@ -24,7 +24,7 @@ def MindtPy_iteration_loop(solve_data, config):
 
         solve_data.mip_subiter = 0
         # solve MILP master problem
-        if config.strategy == 'OA':
+        if config.strategy in ['OA', 'LOA']:
             master_mip, master_mip_results = solve_OA_master(solve_data, config)
             if master_mip_results.solver.termination_condition is tc.optimal:
                 handle_master_mip_optimal(master_mip, solve_data, config)
@@ -38,6 +38,9 @@ def MindtPy_iteration_loop(solve_data, config):
 
         if algorithm_should_terminate(solve_data, config):
             break
+
+        if config.strategy == 'LOA':
+            apply_LOA_regularization(master_mip, solve_data, config)
 
         # Solve NLP subproblem
         # The constraint linearization happens in the handlers

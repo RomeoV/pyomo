@@ -54,6 +54,7 @@ def MindtPy_initialize_master(solve_data, config):
         #     add_ecp_cut(solve_data, config)
         # else:
         solve_NLP_subproblem(solve_data, config)
+    solve_data.incumbent_model = solve_data.mip.clone()
 
 
 def init_rNLP(solve_data, config):
