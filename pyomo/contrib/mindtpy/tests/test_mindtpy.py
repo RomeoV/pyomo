@@ -40,6 +40,7 @@ class TestMindtPy(unittest.TestCase):
             #               TerminationCondition.optimal)
             self.assertTrue(fabs(value(model.cost.expr) - 68) <= 1E-2)
 
+
     def test_OA_8PP_init_max_binary(self):
         """Test the outer approximation decomposition algorithm."""
         with SolverFactory('mindtpy') as opt:
@@ -166,6 +167,22 @@ class TestMindtPy(unittest.TestCase):
             # self.assertIs(results.solver.termination_condition,
             #               TerminationCondition.optimal)
             self.assertTrue(abs(value(model.obj.expr) - 0.66555) <= 1E-2)
+
+
+    def test_LOA_Proposal(self):
+        """Test the level based outer approximation decomposition algorithm."""
+        with SolverFactory('mindtpy') as opt:
+            model = ProposalModel()
+            print('\n Solving problem with Outer Approximation')
+            opt.solve(model, strategy='LOA',
+                      mip_solver=required_solvers[1],
+                      nlp_solver=required_solvers[0])
+
+            # self.assertIs(results.solver.termination_condition,
+            #               TerminationCondition.optimal)
+            self.assertTrue(abs(value(model.obj.expr) - 0.66555) <= 1E-2)
+
+
 
     # def test_PSC(self):
     #     """Test the partial surrogate cuts decomposition algorithm."""

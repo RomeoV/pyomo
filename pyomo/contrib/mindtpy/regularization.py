@@ -3,9 +3,10 @@
 For the LOA implementation, contact Romeo Valentin <romeo.valentin@rwth-aachen.de>
 """
 
-from pyomo.environ import (Constraint)
+from pyomo.core import (Constraint)
+from pyomo.opt import (SolverFactory)
 from pyomo.contrib.mindtpy.objective_generation import generate_L2_objective_function
-from pyomo.contrib.gdpopt import copy_var_list_values
+from pyomo.contrib.gdpopt.util import copy_var_list_values
 
 
 def apply_LOA_regularization(master_mip, solve_data, config):
@@ -16,8 +17,8 @@ def apply_LOA_regularization(master_mip, solve_data, config):
 
     MindtPy.MindtPy_oa_obj.deactivate()
 
-    MindtPy.linear_cuts.loa_objective_cut = Constraint(expr=
-        MindtPy.MindtPy_penalty_expr <= f_star)
+    MindtPy.MindtPy_linear_cuts.loa_objective_cut = Constraint(expr=
+        MindtPy.objective_value <= f_star)
 
     if config.LOA_norm in [2, '2']:
         MindtPy.MindtPy_loa_obj = generate_L2_objective_function(loa_mip, solve_data.incumbent_model)

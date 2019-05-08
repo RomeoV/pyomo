@@ -112,7 +112,8 @@ def handle_NLP_subproblem_optimal(fix_nlp, solve_data, config):
     if config.add_integer_cuts:
         add_int_cut(var_values, solve_data, config, feasible=True)
 
-    solve_data.incumbent_model = solve_data.fix_nlp.clone()
+    solve_data.incumbent_model = fix_nlp.clone()
+    solve_data.UB = next(solve_data.incumbent_model.component_data_objects(Objective, active=True)).expr()
     config.call_after_subproblem_feasible(fix_nlp, solve_data)
 
 

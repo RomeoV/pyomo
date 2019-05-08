@@ -9,6 +9,7 @@ from pyomo.contrib.mindtpy.nlp_solve import (solve_NLP_subproblem,
 from pyomo.core import minimize, Objective
 from pyomo.opt import TerminationCondition as tc
 from pyomo.contrib.gdpopt.util import get_main_elapsed_time
+from pyomo.contrib.mindtpy.regularization import apply_LOA_regularization
 
 
 def MindtPy_iteration_loop(solve_data, config):

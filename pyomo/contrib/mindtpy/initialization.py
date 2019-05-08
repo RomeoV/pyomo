@@ -11,6 +11,7 @@ from pyomo.core import (ConstraintList, Objective,
                         TransformationFactory, maximize, minimize, value, Var)
 from pyomo.opt import TerminationCondition as tc
 from pyomo.opt import SolverFactory
+from feasibility_pump import solve_feasibility_pump
 
 
 def MindtPy_initialize_master(solve_data, config):
@@ -45,9 +46,14 @@ def MindtPy_initialize_master(solve_data, config):
             config.init_strategy = 'rNLP'
         else:
             config.init_strategy = 'max_binary'
+    elif config.strategy == 'LOA':
+        config.init_strategy = 'feas_pump'
+        init_feas_pump(solve_data, config)
     # Do the initialization
     elif config.init_strategy == 'rNLP':
         init_rNLP(solve_data, config)
+    elif config.init_strategy == 'feas_pump':
+        init_feas_pump(solve_data, config)
     elif config.init_strategy == 'max_binary':
         init_max_binaries(solve_data, config)
         # if config.strategy == 'ECP':
@@ -56,6 +62,12 @@ def MindtPy_initialize_master(solve_data, config):
         solve_NLP_subproblem(solve_data, config)
     solve_data.incumbent_model = solve_data.mip.clone()
 
+
+def init_feas_pump(solve_data, config):
+    config.logger.info('Initializing using feasibility pump')
+    feas_pump_data = solve_feasibility_pump(solve_data.working_model, copy_back=True)
+    solve_data.UB = next(solve_data.working_model.component_data_objects(Objective, active=True)).expr()
+    config.logger.info('Found initial feasible solution with UB={}'.format(solve_data.UB))
 
 def init_rNLP(solve_data, config):
     """Initialize by solving the rNLP (relaxed binary variables)."""

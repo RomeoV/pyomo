@@ -78,7 +78,7 @@ class MindtPySolver(object):
     ))
     CONFIG.declare("strategy", ConfigValue(
         default="OA",
-        domain=In(["OA", "GBD", "ECP", "PSC"]),
+        domain=In(["OA", "LOA", "GBD", "ECP", "PSC"]),
         description="Decomposition strategy",
         doc="MINLP Decomposition strategy to be applied to the method. "
             "Currently available Outer Approximation (OA), Extended Cutting "
@@ -87,7 +87,7 @@ class MindtPySolver(object):
     ))
     CONFIG.declare("init_strategy", ConfigValue(
         default="rNLP",
-        domain=In(["rNLP", "initial_binary", "max_binary"]),
+        domain=In(["rNLP", "feas_pump", "initial_binary", "max_binary"]),
         description="Initialization strategy",
         doc="Initialization strategy used by any method. Currently the "
             "continuous relaxation of the MINLP (rNLP), solve a maximal "
@@ -286,7 +286,7 @@ class MindtPySolver(object):
 
             MindtPy = solve_data.working_model.MindtPy_utils
             setup_results_object(solve_data, config)
-            process_objective(solve_data, config, alway_move_objective=True)  # TODO-romeo fix this
+            process_objective(solve_data, config, always_move_objective=True)  # TODO-romeo fix this
 
             # Save model initial values.
             solve_data.initial_var_values = list(
