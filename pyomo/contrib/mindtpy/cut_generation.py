@@ -3,9 +3,11 @@ from __future__ import division
 
 from math import copysign
 
-from pyomo.core import Constraint, minimize, value
-from pyomo.core.expr import current as EXPR
-from pyomo.contrib.gdpopt.util import copy_var_list_values, identify_variables
+from pyomo.core import Constraint, Var, minimize, value
+from pyomo.core.expr.current import identify_variables
+from pyomo.core.expr.current import ExpressionReplacementVisitor
+from pyomo.repn import generate_standard_repn
+from pyomo.core.kernel.component_set import ComponentSet
 
 
 def add_objective_linearization(solve_data, config):
@@ -27,7 +29,7 @@ def add_objective_linearization(solve_data, config):
         c = MindtPy.MindtPy_linear_cuts.ecp_cuts.add(
             expr=sign_adjust * sum(
                 value(MindtPy.jacs[obj][id(var)]) * (var - value(var))
-                for var in list(EXPR.identify_variables(obj.body))) +
+                for var in list(identify_variables(obj.body))) +
                  value(obj.body) <= 0)
         MindtPy.ECP_constr_map[obj, solve_data.mip_iter] = c
 
@@ -60,13 +62,13 @@ def add_oa_cuts(target_model, dual_values, solve_data, config,
             target_model.MindtPy_utils.MindtPy_linear_cuts.oa_cuts.add(
                 expr=copysign(1, sign_adjust * dual_value)
                      * (sum(value(jacs[constr][var]) * (var - value(var))
-                            for var in list(EXPR.identify_variables(constr.body)))
+                            for var in list(identify_variables(constr.body)))
                         + value(constr.body) - rhs)
                      - slack_var <= 0)
 
         else:  # Inequality constraint (possibly two-sided)
             if constr.has_ub() \
-               and (linearize_active and abs(constr.uslack()) < config.zero_tolerance) \
+               and (linearize_active and abs(constr.uslack()) < config.constraint_tolerance) \
                     or (linearize_violated and constr.uslack() < 0) \
                     or (linearize_inactive and constr.uslack() > 0):
                 if use_slack_var:
@@ -80,7 +82,7 @@ def add_oa_cuts(target_model, dual_values, solve_data, config,
                 )
 
             if constr.has_lb() \
-               and (linearize_active and abs(constr.lslack()) < config.zero_tolerance) \
+               and (linearize_active and abs(constr.lslack()) < config.constraint_tolerance) \
                     or (linearize_violated and constr.lslack() < 0) \
                     or (linearize_inactive and constr.lslack() > 0):
                 if use_slack_var:
@@ -94,10 +96,35 @@ def add_oa_cuts(target_model, dual_values, solve_data, config,
                 )
 
 
-def add_oa_equality_relaxation(var_values, duals, solve_data, config, ignore_integrality=False):
-    """TODO-david change name, write short docstring
+def add_no_good_cut(target_model, config):
+    """Cut out current binary combination"""
+    target_model.MindtPy_utils. \
+        MindtPy_linear_cuts.integer_cuts.add(
+            expr=(sum(var if var.value == 0 else (1-var)
+                      for var in target_model.MindtPy_utils.variable_list
+                      if var.is_binary())
+                  >= 1))
 
-    ignore_integrality: useful for cut in initial relaxation
+
+def add_oa_equality_relaxation(var_values, duals, solve_data, config, ignore_integrality=False):
+    """More general case for outer approximation
+
+    This method covers nonlinear inequalities g(x)<=b and g(x)>=b as well as 
+    equalities g(x)=b all in the same linearization call. It combines the dual
+    with the objective sense to figure out how to generate the cut.
+    Note that the dual sign is defined as follows (according to IPOPT):
+      sgn  | min | max
+    -------|-----|-----
+    g(x)<=b|  +1 | -1
+    g(x)>=b|  -1 | +1
+
+    Note additionally that the dual value is not strictly neccesary for inequality
+    constraints, but definitely neccesary for equality constraints. For equality 
+    constraints the cut will always be generated so that the side with the worse objective
+    function is the 'interior'.
+
+    ignore_integrality: Accepts float values for discrete variables.
+                        Useful for cut in initial relaxation
     """
 
     m = solve_data.mip
@@ -121,48 +148,12 @@ def add_oa_equality_relaxation(var_values, duals, solve_data, config, ignore_int
                + (0 if constr.lower is None else constr.lower))
         # Properly handle equality constraints and ranged inequalities
         # TODO special handling for ranged inequalities? a <= x <= b
+        # TODO make this dependent on dual sign (@David)
         rhs = constr.lower if constr.has_lb() and constr.has_ub() else rhs
         slack_var = MindtPy.MindtPy_linear_cuts.slack_vars.add()
         MindtPy.MindtPy_linear_cuts.oa_cuts.add(
-            expr=copysign(1, sign_adjust * dual_value)
-                 * (sum(value(jacs[constr][var]) * (var - value(var))
-                        for var in list(EXPR.identify_variables(constr.body)))
-                    + value(constr.body) - rhs)
-                 - slack_var <= 0)
-
-
-def add_int_cut(var_values, solve_data, config, feasible=False):
-    if not config.integer_cuts:
-        return
-
-    m = solve_data.working_model
-    MindtPy = m.MindtPy_utils
-    int_tol = config.integer_tolerance
-
-    binary_vars = [v for v in MindtPy.variable_list if v.is_binary()]
-
-    # copy variable values over
-    for var, val in zip(MindtPy.variable_list, var_values):
-        if not var.is_binary():
-            continue
-        var.value = val
-
-    # check to make sure that binary variables are all 0 or 1
-    for v in binary_vars:
-        if value(abs(v - 1)) > int_tol and value(abs(v)) > int_tol:
-            raise ValueError('Binary {} = {} is not 0 or 1'.format(
-                v.name, value(v)))
-
-    if not binary_vars:  # if no binary variables, skip.
-        return
-
-    int_cut = (sum(1 - v for v in binary_vars
-                   if value(abs(v - 1)) <= int_tol) +
-               sum(v for v in binary_vars
-                   if value(abs(v)) <= int_tol) >= 1)
-
-    if not feasible:
-        # Add the integer cut
-        MindtPy.MindtPy_linear_cuts.integer_cuts.add(expr=int_cut)
-    else:
-        MindtPy.MindtPy_linear_cuts.feasible_integer_cuts.add(expr=int_cut)
+            expr=(copysign(1, sign_adjust * dual_value)
+                  * (sum(value(jacs[constr][var]) * (var - value(var))
+                         for var in identify_variables(constr.body))
+                     + value(constr.body) - rhs)
+                  - slack_var <= 0))

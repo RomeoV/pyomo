@@ -7,7 +7,7 @@ from pyomo.contrib.mindtpy.cut_generation import (
 )
 from pyomo.contrib.mindtpy.nlp_solve import solve_NLP_subproblem
 from pyomo.contrib.mindtpy.util import (calc_jacobians)
-from pyomo.core import (ConstraintList, Objective,
+from pyomo.core import (Constraint, ConstraintList, Objective,
                         TransformationFactory, maximize, minimize, value, Var)
 from pyomo.opt import TerminationCondition as tc
 from pyomo.opt import SolverFactory
@@ -24,10 +24,13 @@ def MindtPy_initialize_master(solve_data, config):
 
     m.dual.activate()
 
-    if config.strategy == 'OA':
+    if config.strategy in ['OA', 'LOA', 'feas_pump']:
         calc_jacobians(solve_data, config)  # preload jacobians
         MindtPy.MindtPy_linear_cuts.oa_cuts = ConstraintList(
             doc='Outer approximation cuts')
+    else:
+        raise NotImplementedError(config.strategy)
+
     # elif config.strategy == 'ECP':
     #     calc_jacobians(solve_data, config)  # preload jacobians
     #     MindtPy.MindtPy_linear_cuts.ecp_cuts = ConstraintList(
@@ -40,27 +43,29 @@ def MindtPy_initialize_master(solve_data, config):
     #     MindtPy.MindtPy_linear_cuts.gbd_cuts = ConstraintList(
     #         doc='Generalized Benders cuts')
 
-    # Set default initialization_strategy
-    if config.init_strategy is None:
-        if config.strategy == 'OA':
-            config.init_strategy = 'rNLP'
-        else:
-            config.init_strategy = 'max_binary'
-    elif config.strategy == 'LOA':
-        config.init_strategy = 'feas_pump'
-        init_feas_pump(solve_data, config)
-    # Do the initialization
-    elif config.init_strategy == 'rNLP':
-        init_rNLP(solve_data, config)
-    elif config.init_strategy == 'feas_pump':
-        init_feas_pump(solve_data, config)
-    elif config.init_strategy == 'max_binary':
-        init_max_binaries(solve_data, config)
-        # if config.strategy == 'ECP':
-        #     add_ecp_cut(solve_data, config)
-        # else:
-        solve_NLP_subproblem(solve_data, config)
-    solve_data.incumbent_model = solve_data.mip.clone()
+
+    if config.strategy in ['OA', 'LOA']:
+        # Set default initialization_strategy
+        if config.init_strategy is None:
+            if config.strategy == 'OA':
+                config.init_strategy = 'rNLP'
+            else:
+                config.init_strategy = 'max_binary'
+        # Do the initialization
+        if config.init_strategy == 'rNLP':
+            init_rNLP(solve_data, config)
+        elif config.init_strategy == 'max_binary':
+            init_max_binaries(solve_data, config)
+            # if config.strategy == 'ECP':
+            #     add_ecp_cut(solve_data, config)
+            # else:
+            solve_NLP_subproblem(solve_data, config)
+    elif config.strategy is 'feas_pump':
+        init_rNLP(solve_data, config)  # solution is written to mip model
+        MindtPy.MindtPy_linear_cuts.increasing_objective_cut = Constraint(expr=MindtPy.objective_value <= config.obj_bound)
+        copy_var_list_values(solve_data.mip.MindtPy_utils.variable_list,
+                             solve_data.working_model.MindtPy_utils.variable_list,
+                             config, ignore_integrality=True)
 
 
 def init_feas_pump(solve_data, config):
@@ -81,7 +86,7 @@ def init_rNLP(solve_data, config):
         results = SolverFactory(config.nlp_solver).solve(
             m, **config.nlp_solver_args)
     subprob_terminate_cond = results.solver.termination_condition
-    if subprob_terminate_cond is tc.optimal:
+    if subprob_terminate_cond == tc.optimal:
         main_objective = next(m.component_data_objects(Objective, active=True))
         nlp_solution_values = list(v.value for v in MindtPy.variable_list)
         dual_values = list(m.dual[c] for c in MindtPy.constraint_list)
@@ -94,7 +99,7 @@ def init_rNLP(solve_data, config):
             'NLP %s: OBJ: %s  LB: %s  UB: %s'
             % (solve_data.nlp_iter, value(main_objective.expr),
                solve_data.LB, solve_data.UB))
-        if config.strategy == 'OA':
+        if config.strategy in ['OA', 'feas_pump']:
             copy_var_list_values(m.MindtPy_utils.variable_list, 
                                  solve_data.mip.MindtPy_utils.variable_list,
                                  config, ignore_integrality=True)

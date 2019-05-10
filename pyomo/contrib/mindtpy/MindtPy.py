@@ -78,7 +78,7 @@ class MindtPySolver(object):
     ))
     CONFIG.declare("strategy", ConfigValue(
         default="OA",
-        domain=In(["OA", "LOA", "GBD", "ECP", "PSC"]),
+        domain=In(["OA", "LOA", "GBD", "ECP", "PSC", "feas_pump"]),
         description="Decomposition strategy",
         doc="MINLP Decomposition strategy to be applied to the method. "
             "Currently available Outer Approximation (OA), Extended Cutting "
@@ -94,11 +94,11 @@ class MindtPySolver(object):
             "covering problem (max_binary), and fix the initial value for "
             "the integer variables (initial_binary)"
     ))
-    CONFIG.declare("integer_cuts", ConfigValue(
-        default=True,
+    CONFIG.declare("add_no_good_cuts", ConfigValue(
+        default=False,
         domain=bool,
-        description="Integer cuts",
-        doc="Add integer cuts after finding a feasible solution to the MINLP"
+        description="Whether to do integer cuts",
+        doc="After the NLP has ben solved, an integer cut will be done on the current binary variables"
     ))
     CONFIG.declare("max_slack", ConfigValue(
         default=1000.0,
@@ -138,6 +138,11 @@ class MindtPySolver(object):
         doc="Linear tradeoff parameter for incumbent vs lower bound."
             "Has to be between 0 and 1. 0 means 100% incumbent (i.e. no new point),"
             "1 means 100% lower bound (i.e. regular OA)"
+    CONFIG.declare("feas_pump_delta", ConfigValue(
+        default=1E-1,
+        domain=PositiveFloat,
+        description="Objective increasing \delta",
+        doc="Will force each new feasible point to be '\delta * abs(UB)' better than the last one"
     ))
     CONFIG.declare("nlp_solver", ConfigValue(
         default="ipopt",
@@ -201,11 +206,11 @@ class MindtPySolver(object):
                     "smaller in absolute value than the following."
     ))
     CONFIG.declare("integer_tolerance", ConfigValue(
-        default=1E-5,
+        default=1E-6,
         description="Tolerance on integral values."
     ))
     CONFIG.declare("constraint_tolerance", ConfigValue(
-        default=1E-6,
+        default=1E-4,
         description="Tolerance on constraint satisfaction."
     ))
     CONFIG.declare("variable_tolerance", ConfigValue(
@@ -213,7 +218,7 @@ class MindtPySolver(object):
         description="Tolerance on variable bounds."
     ))
     CONFIG.declare("zero_tolerance", ConfigValue(
-        default=1E-15,
+        default=1E-12,
         description="Tolerance on variable equal to zero."
     ))
     CONFIG.declare("initial_feas", ConfigValue(
@@ -286,7 +291,7 @@ class MindtPySolver(object):
 
             MindtPy = solve_data.working_model.MindtPy_utils
             setup_results_object(solve_data, config)
-            process_objective(solve_data, config, always_move_objective=True)  # TODO-romeo fix this
+            process_objective(solve_data, config, always_move_objective=True)
 
             # Save model initial values.
             solve_data.initial_var_values = list(

@@ -24,6 +24,34 @@ class MindtPySolveData(object):
     pass
 
 
+def model_is_feasible(model, config):
+    """Checks if all variables are assigned and within their bounds and if all constraints are satisfied"""
+
+    zt = config.zero_tolerance
+
+    all_vars_assigned = all(
+        var.value is not None
+        for var in model.component_data_objects(Var, active=True)
+    )
+    if not all_vars_assigned:
+        return False
+
+    all_vars_in_bounds = all(
+        var.value <= var.ub+zt if var.has_ub() else True
+        and var.value >= var.lb-zt if var.has_lb() else True
+        for var in model.component_data_objects(Var, active=True)
+    )
+    if not all_vars_in_bounds:
+        return False
+
+    all_constraints_feasible = all(
+        constr.slack >= -zt
+        for constr in model.component_data_objects(Constraint, active=True)
+    )
+
+    return all_vars_assigned and all_vars_in_bounds and all_constraints_feasible
+
+
 def model_is_valid(solve_data, config):
     """Validate that the model is solveable by MindtPy.
 
@@ -31,6 +59,7 @@ def model_is_valid(solve_data, config):
     constraints.
 
     """
+
     m = solve_data.working_model
     MindtPy = m.MindtPy_utils
 
@@ -40,12 +69,14 @@ def model_is_valid(solve_data, config):
         prob.number_of_integer_variables == 0 and
             prob.number_of_disjunctions == 0):
         config.logger.info('Problem has no discrete decisions.')
-        if len(MindtPy.working_nonlinear_constraints) > 0:
+        obj = next(m.component_data_objects(Objective, active=True))
+        if (any(c.body.polynomial_degree() not in (1, 0) for c in MindtPy.constraint_list) or
+                obj.expr.polynomial_degree() not in (1, 0)):
             config.logger.info(
                 "Your model is an NLP (nonlinear program). "
-                "Using NLP solver %s to solve." % config.nlp)
-            SolverFactory(config.nlp).solve(
-                solve_data.original_model, **config.nlp_options)
+                "Using NLP solver %s to solve." % config.nlp_solver)
+            SolverFactory(config.nlp_solver).solve(
+                solve_data.original_model, **config.nlp_solver_args)
             return False
         else:
             config.logger.info(
@@ -74,8 +105,8 @@ def calc_jacobians(solve_data, config):
         vars_in_constr = list(EXPR.identify_variables(c.body))
         jac_list = differentiate(c.body, wrt_list=vars_in_constr)
         solve_data.jacobians[c] = ComponentMap(
-            (var, jac_wrt_var)
-            for var, jac_wrt_var in zip(vars_in_constr, jac_list))
+            (var, derivative)
+            for var, derivative in zip(vars_in_constr, jac_list))
 
 
 def add_feas_slacks(m):
@@ -84,8 +115,6 @@ def add_feas_slacks(m):
     for i, constr in enumerate(MindtPy.constraint_list, 1):
         rhs = ((0 if constr.upper is None else constr.upper) +
                (0 if constr.lower is None else constr.lower))
-        c = MindtPy.MindtPy_feas.feas_constraints.add(
+        MindtPy.MindtPy_feas.feas_constraints.add(
             constr.body - rhs
             <= MindtPy.MindtPy_feas.slack_var[i])
-
-
