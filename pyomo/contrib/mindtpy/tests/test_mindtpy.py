@@ -120,7 +120,7 @@ class TestMindtPy(unittest.TestCase):
 
             # self.assertIs(results.solver.termination_condition,
             #               TerminationCondition.optimal)
-            self.assertTrue(abs(value(model.cost.expr) - 6.00976) <= 1E-2)
+            self.assertTrue(abs(value(model.cost.expr) + 6.00972) <= 1E-2)
 
 
     def test_OA_MINLP3_simple(self):
