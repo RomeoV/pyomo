@@ -138,11 +138,12 @@ class MindtPySolver(object):
         doc="Linear tradeoff parameter for incumbent vs lower bound."
             "Has to be between 0 and 1. 0 means 100% incumbent (i.e. no new point),"
             "1 means 100% lower bound (i.e. regular OA)"
+    ))
     CONFIG.declare("feas_pump_delta", ConfigValue(
         default=1E-1,
         domain=PositiveFloat,
-        description="Objective increasing \delta",
-        doc="Will force each new feasible point to be '\delta * abs(UB)' better than the last one"
+        description="Objective increasing \\delta",
+        doc="Will force each new feasible point to be '\\delta * abs(UB)' better than the last one"
     ))
     CONFIG.declare("nlp_solver", ConfigValue(
         default="ipopt",

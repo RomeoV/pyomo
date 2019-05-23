@@ -11,7 +11,7 @@ from pyomo.core import (Constraint, ConstraintList, Objective,
                         TransformationFactory, maximize, minimize, value, Var)
 from pyomo.opt import TerminationCondition as tc
 from pyomo.opt import SolverFactory
-from feasibility_pump import solve_feasibility_pump
+from pyomo.contrib.mindtpy.feasibility_pump import solve_feasibility_pump
 
 
 def MindtPy_initialize_master(solve_data, config):
