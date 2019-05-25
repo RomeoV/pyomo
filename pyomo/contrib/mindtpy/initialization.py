@@ -24,7 +24,7 @@ def MindtPy_initialize_master(solve_data, config):
     m.dual.activate()
 
     if config.strategy in ['OA', 'LOA', 'feas_pump']:
-        calc_jacobians(solve_data, config)  # preload jacobians
+        calc_jacobians(solve_data, config, use_mip=True)  # preload jacobians
         MindtPy.MindtPy_linear_cuts.oa_cuts = ConstraintList(
             doc='Outer approximation cuts')
     else:

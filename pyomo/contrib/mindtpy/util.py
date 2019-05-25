@@ -94,12 +94,13 @@ def model_is_valid(solve_data, config):
     return True
 
 
-def calc_jacobians(solve_data, config):
+def calc_jacobians(solve_data, config, use_mip=False):
     """Generate a map of jacobians."""
     # Map nonlinear_constraint --> Map(
     #     variable --> jacobian of constraint wrt. variable)
     solve_data.jacobians = ComponentMap()
-    for c in solve_data.working_model.MindtPy_utils.constraint_list:
+    model = solve_data.working_model if not use_mip else solve_data.mip
+    for c in model.component_data_objects(Constraint, active=True):
         if c.body.polynomial_degree() in (1, 0):
             continue  # skip linear constraints
         vars_in_constr = list(EXPR.identify_variables(c.body))
