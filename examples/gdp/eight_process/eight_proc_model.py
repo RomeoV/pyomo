@@ -57,9 +57,30 @@ def build_eight_process_flowsheet():
     CV = m.CV = Param(m.streams, initialize=variable_cost, default=0)
 
     # initial point information for stream flows
-    initX = {2: 2, 3: 1.5, 6: 0.75, 7: 0.5, 8: 0.5, 9: 0.75, 11: 1.5,
-             12: 1.34, 13: 2, 14: 2.5, 17: 2, 18: 0.75, 19: 2, 20: 1.5,
-             23: 1.7, 24: 1.5, 25: 0.5}
+    initX = {2: 2,
+             3: 1.5,
+             4: 0,
+             5: 0,
+             6: 0.75,
+             7: 0.5,
+             8: 0.5,
+             9: 0.75,
+             10: 0,
+             11: 1.5,
+             12: 1.34,
+             13: 2,
+             14: 2.5,
+             15: 0,
+             16: 0,
+             17: 2,
+             18: 0.75,
+             19: 2,
+             20: 1.5,
+             21: 0,
+             22: 0,
+             23: 1.7,
+             24: 1.5,
+             25: 0.5}
 
     """Variable declarations"""
     # FLOWRATES OF PROCESS STREAMS
@@ -164,11 +185,10 @@ def build_eight_process_flowsheet():
         - m.use_unit_8ornot.disjuncts[0].indicator_var <= 0)
 
     """Profit (objective) function definition"""
-    m.profit = Objective(expr=sum(
-        m.yCF[unit]
-        for unit in m.units) +
-        sum(m.flow[stream] * CV[stream]
-            for stream in m.streams) + CONSTANT,
+    m.profit = Objective(
+        expr=( sum(m.yCF[unit] for unit in m.units)
+             + sum(m.flow[stream] * CV[stream] for stream in m.streams)
+             + CONSTANT),
         sense=minimize)
 
     """Bound definitions"""

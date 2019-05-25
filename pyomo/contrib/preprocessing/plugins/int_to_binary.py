@@ -96,12 +96,6 @@ class IntegerToBinary(IsomorphicTransformation):
                     "upper or lower bound. LB: %s; UB: %s. "
                     "Integer to binary reformulation does not support unbounded integer variables."
                     % (int_var.name, int_var.lb, int_var.ub))
-            if int_var.lb < 0:
-                raise ValueError(
-                    "Integer variable %s can be negative. "
-                    "Integer to binary reformulation currently only supports non-negative integer "
-                    "variables." % (int_var.name,)
-                )
             # do the reformulation
             highest_power = int(floor(log(value(int_var.ub - int_var.lb), 2)))
             # TODO potentially fragile due to floating point
