@@ -84,7 +84,7 @@ class TestMindtPy(unittest.TestCase):
 
             self.assertIs(results.solver.termination_condition,
                           TerminationCondition.optimal)
-            self.assertAlmostEqual(model.cost.expr(), 6.00976, places=2)
+            self.assertAlmostEqual(model.cost.expr(), +6.00976, places=2)
 
 
     def test_OA_MINLP3_simple(self):

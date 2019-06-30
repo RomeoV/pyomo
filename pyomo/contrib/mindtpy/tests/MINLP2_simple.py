@@ -71,7 +71,7 @@ class SimpleMINLP(ConcreteModel):
 
         """Cost (objective) function definition"""
         # Changed to maximization from to test out maximization too
-        m.cost = Objective(expr=-5*Y[1] - 6*Y[2] - 8*Y[3] - X[4], sense=maximize)
+        m.cost = Objective(expr=+5*Y[1] + 6*Y[2] + 8*Y[3] + X[4], sense=minimize)
 
         """Bound definitions"""
         # x (continuous) upper bounds
