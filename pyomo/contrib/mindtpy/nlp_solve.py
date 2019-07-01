@@ -176,6 +176,8 @@ def handle_NLP_subproblem_optimal(sub_nlp, solve_data, config):
     elif config.strategy == 'GBD':
         add_gbd_cut(solve_data, config)
 
+    if config.add_no_good_cuts:
+        add_no_good_cut(solve_data.mip, solve_data)  # excludes current discrete option
     config.call_after_subproblem_feasible(sub_nlp, solve_data)
 
 
@@ -217,7 +219,7 @@ def handle_NLP_subproblem_infeasible(sub_nlp, solve_data, config):
     # Add an integer cut to exclude this discrete option
     var_values = list(v.value for v in sub_nlp.MindtPy_utils.variable_list)
     if config.add_no_good_cuts:
-        add_no_good_cut(solve_data.mip, solve_data, config)  # excludes current discrete option
+        add_no_good_cut(solve_data.mip, solve_data)  # excludes current discrete option
 
 
 def handle_NLP_subproblem_other_termination(sub_nlp, termination_condition,
