@@ -6,7 +6,8 @@ from pyomo.contrib.mindtpy.mip_solve import (
     handle_master_mip_other_conditions)
 from pyomo.contrib.mindtpy.nlp_solve import (
     solve_NLP_subproblem, handle_NLP_subproblem_optimal,
-    handle_NLP_subproblem_infeasible, handle_NLP_subproblem_other_termination)
+    handle_NLP_subproblem_infeasible, handle_NLP_subproblem_other_termination,
+    feas_pump_converged)
 from pyomo.core import minimize, Objective
 from pyomo.opt import TerminationCondition as tc
 from pyomo.contrib.mindtpy.regularization import apply_LOA_regularization
@@ -45,7 +46,7 @@ def MindtPy_iteration_loop(solve_data, config):
                                                    solve_data, config)
             # Call the MILP post-solve callback
             config.call_after_master_solve(master_mip, solve_data)
-        elif config.strategy == 'feas_pump':
+        elif config.strategy in ['feas_pump', 'feas_pump_any']:
             feas_mip, feas_mip_results = solve_OA_master(solve_data, config)
             if feas_mip_results.solver.termination_condition is tc.optimal:
                 handle_master_mip_optimal(feas_mip, solve_data, config)
@@ -146,6 +147,10 @@ def algorithm_should_terminate(solve_data, config):
     elif config.strategy is 'feas_pump':
         # feasability pump termination comes from infeasibility of the MIP
         pass
+    elif config.strategy is 'feas_pump_any':
+        if feas_pump_converged(solve_data, config):
+            config.logger.info('Feasibility pump (any) found a feasible solution')
+            return True
 
     # Check iteration limit
     if solve_data.mip_iter >= config.iteration_limit:

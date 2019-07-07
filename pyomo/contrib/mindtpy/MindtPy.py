@@ -78,7 +78,7 @@ class MindtPySolver(object):
     ))
     CONFIG.declare("strategy", ConfigValue(
         default="OA",
-        domain=In(["OA", "LOA", "GBD", "ECP", "PSC", "feas_pump"]),
+        domain=In(["OA", "LOA", "GBD", "ECP", "PSC", "feas_pump", "feas_pump_any"]),
         description="Decomposition strategy",
         doc="MINLP Decomposition strategy to be applied to the method. "
             "Currently available Outer Approximation (OA), Extended Cutting "
@@ -87,7 +87,7 @@ class MindtPySolver(object):
     ))
     CONFIG.declare("init_strategy", ConfigValue(
         default="rNLP",
-        domain=In(["rNLP", "feas_pump", "initial_binary", "max_binary"]),
+        domain=In(["rNLP", "feas_pump", "feas_pump_any", "initial_binary", "max_binary"]),
         description="Initialization strategy",
         doc="Initialization strategy used by any method. Currently the "
             "continuous relaxation of the MINLP (rNLP), solve a maximal "

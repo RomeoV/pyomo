@@ -23,7 +23,7 @@ def MindtPy_initialize_master(solve_data, config):
 
     m.dual.activate()
 
-    if config.strategy in ['OA', 'LOA', 'feas_pump']:
+    if config.strategy in ['OA', 'LOA', 'feas_pump', 'feas_pump_any']:
         calc_jacobians(solve_data, config, use_mip=True)  # preload jacobians
         MindtPy.MindtPy_linear_cuts.oa_cuts = ConstraintList(
             doc='Outer approximation cuts')
@@ -59,7 +59,7 @@ def MindtPy_initialize_master(solve_data, config):
             #     add_ecp_cut(solve_data, config)
             # else:
             solve_NLP_subproblem(solve_data, config)
-    elif config.strategy is 'feas_pump':
+    elif config.strategy in ['feas_pump', 'feas_pump_any']:
         init_rNLP(solve_data, config)  # solution is written to mip model
         MindtPy.MindtPy_linear_cuts.increasing_objective_cut = Constraint(expr=MindtPy.objective_value <= config.obj_bound)
         copy_var_list_values(solve_data.mip.MindtPy_utils.variable_list,
@@ -98,7 +98,7 @@ def init_rNLP(solve_data, config):
             'NLP %s: OBJ: %s  LB: %s  UB: %s'
             % (solve_data.nlp_iter, value(main_objective.expr),
                solve_data.LB, solve_data.UB))
-        if config.strategy in ['OA', 'feas_pump']:
+        if config.strategy in ['OA', 'feas_pump', 'feas_pump_any']:
             copy_var_list_values(m.MindtPy_utils.variable_list, 
                                  solve_data.mip.MindtPy_utils.variable_list,
                                  config, ignore_integrality=True)
